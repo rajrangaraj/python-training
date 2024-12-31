@@ -1,0 +1,6 @@
+basics/2_datatypes/
+├── 1_basic_types.py        # int, float, str, bool
+├── 2_collections.py        # lists, tuples, sets
+├── 3_dictionaries.py       # dictionaries and their operations
+├── 4_type_conversion.py    # type casting and conversion
+└── 5_practical_examples.py # real-world examples
