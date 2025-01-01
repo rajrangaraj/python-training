@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="sidebar">
+        <div class="user-info">
+            <input type="text" id="username" placeholder="Enter username" class="form-control">
+        </div>
+        
+        <div class="room-list">
+            <h3>Chat Rooms</h3>
+            <ul>
+                {% for room in rooms %}
+                <li>
+                    <button class="room-btn" data-room="{{ room }}">
+                        #{{ room }}
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <div class="active-users">
+            <h3>Active Users</h3>
+            <ul id="user-list"></ul>
+        </div>
+    </div>
+    
+    <div class="chat-main">
+        <div class="chat-header">
+            <h2 id="current-room">Select a room</h2>
+        </div>
+        
+        <div class="chat-messages" id="messages"></div>
+        
+        <div class="chat-input">
+            <div class="typing-indicator" id="typing-indicator"></div>
+            <div class="input-group">
+                <input type="text" id="message" placeholder="Type a message..." disabled>
+                <button id="send-btn" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+const socket = io();
+let currentRoom = null;
+let username = null;
+let typingTimeout = null;
+
+// DOM Elements
+const usernameInput = document.getElementById('username');
+const messageInput = document.getElementById('message');
+const sendButton = document.getElementById('send-btn');
+const messagesDiv = document.getElementById('messages');
+const userList = document.getElementById('user-list');
+const currentRoomHeader = document.getElementById('current-room');
+const typingIndicator = document.getElementById('typing-indicator');
+
+// Socket event handlers
+socket.on('connect', () => {
+    console.log('Connected to server');
+});
+
+socket.on('message', (data) => {
+    appendMessage(data);
+});
+
+socket.on('user_joined', (data) => {
+    updateUserList(data.active_users);
+});
+
+socket.on('user_left', (data) => {
+    updateUserList(data.active_users);
+});
+
+socket.on('typing', (data) => {
+    if (data.typing) {
+        typingIndicator.textContent = `${data.username} is typing...`;
+    } else {
+        typingIndicator.textContent = '';
+    }
+});
+
+// Event listeners
+document.querySelectorAll('.room-btn').forEach(button => {
+    button.addEventListener('click', () => {
+        const room = button.dataset.room;
+        joinRoom(room);
+    });
+});
+
+messageInput.addEventListener('input', () => {
+    if (username && currentRoom) {
+        clearTimeout(typingTimeout);
+        socket.emit('typing', {
+            username: username,
+            room: currentRoom,
+            typing: true
+        });
+        
+        typingTimeout = setTimeout(() => {
+            socket.emit('typing', {
+                username: username,
+                room: currentRoom,
+                typing: false
+            });
+        }, 1000);
+    }
+});
+
+sendButton.addEventListener('click', sendMessage);
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+// Helper functions
+function joinRoom(room) {
+    if (!username) {
+        username = usernameInput.value.trim();
+        if (!username) {
+            alert('Please enter a username');
+            return;
+        }
+        usernameInput.disabled = true;
+    }
+    
+    if (currentRoom) {
+        socket.emit('leave', { username, room: currentRoom });
+    }
+    
+    currentRoom = room;
+    currentRoomHeader.textContent = `#${room}`;
+    messageInput.disabled = false;
+    sendButton.disabled = false;
+    
+    socket.emit('join', { username, room });
+    messagesDiv.innerHTML = '';
+}
+
+function sendMessage() {
+    const message = messageInput.value.trim();
+    if (message && username && currentRoom) {
+        socket.emit('message', {
+            username: username,
+            message: message,
+            room: currentRoom
+        });
+        messageInput.value = '';
+    }
+}
+
+function appendMessage(data) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${data.username === username ? 'own' : ''}`;
+    
+    const timestamp = new Date(data.timestamp).toLocaleTimeString();
+    messageDiv.innerHTML = `
+        <span class="username">${data.username}</span>
+        <span class="timestamp">${timestamp}</span>
+        <div class="content">${data.message}</div>
+    `;
+    
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function updateUserList(users) {
+    userList.innerHTML = users.map(user => `
+        <li class="user ${user === username ? 'self' : ''}">
+            ${user}
+        </li>
+    `).join('');
+}
+</script>
+{% endblock %} 

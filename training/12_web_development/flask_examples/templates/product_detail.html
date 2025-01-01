@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="product-detail">
+    <h1>{{ product.name }}</h1>
+    <div class="product-info">
+        <p class="price">{{ format_price(product.price) }}</p>
+        <p class="status {{ 'in-stock' if product.in_stock else 'out-of-stock' }}">
+            {{ product.in_stock|status_badge }}
+        </p>
+    </div>
+    <a href="{{ url_for('products') }}" class="button">Back to Products</a>
+</div>
+{% endblock %} 

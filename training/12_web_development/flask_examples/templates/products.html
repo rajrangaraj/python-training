@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Our Products</h1>
+
+<div class="product-grid">
+    {% for product in products %}
+    <div class="product-card">
+        <h2>{{ product.name }}</h2>
+        <p class="price">{{ format_price(product.price) }}</p>
+        <p class="status {{ 'in-stock' if product.in_stock else 'out-of-stock' }}">
+            {{ product.in_stock|status_badge }}
+        </p>
+        <a href="{{ url_for('product_detail', product_id=product.id) }}" 
+           class="button">View Details</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %} 
